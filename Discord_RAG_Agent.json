@@ -1,0 +1,509 @@
+{
+  "name": "Discord RAG Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1600,
+        -160
+      ],
+      "id": "802906bf-5df8-41f3-962e-95118a952025",
+      "name": "Telegram Trigger",
+      "webhookId": "GENERATED_ON_IMPORT",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAMAPI_CREDENTIAL_ID",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -896,
+        80
+      ],
+      "id": "fd7ab22e-c7fe-40ed-89fa-431a9e58d936",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        80
+      ],
+      "id": "5704505a-019f-45d9-80a6-71497699f36b",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GOOGLEPALMAPI_CREDENTIAL_ID",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.document.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1328,
+        -160
+      ],
+      "id": "b12ccaee-1057-4928-a35e-d0b3a5e2cde8",
+      "name": "Get a file",
+      "webhookId": "GENERATED_ON_IMPORT",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAMAPI_CREDENTIAL_ID",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.question }}",
+        "options": {
+          "systemMessage": "=When formatting responses:\n- Use **bold text** for headings instead of # markdown headers\n- Keep numbered list items together (number + content on same line)\n- Use proper Discord markdown:\n  * **bold** for emphasis\n  * *italic* for secondary emphasis\n  * `code` for technical terms\n  * ```code blocks``` for multi-line code\n- Avoid using #### headers as they don't render in Discord"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        368
+      ],
+      "id": "a61eaff5-5232-499c-be91-689e7959a510",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.user_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -1216,
+        608
+      ],
+      "id": "2e8a7f06-3d4a-4952-b5e4-226b4e3ce60d",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "YOUR_POSTGRES_CREDENTIAL_ID",
+          "name": "PostgreSQL Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1360,
+        608
+      ],
+      "id": "0767e61e-f943-492c-bb3e-7c3b6dcf4357",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GOOGLEPALMAPI_CREDENTIAL_ID",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "discord-rag",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1648,
+        368
+      ],
+      "id": "151e660a-c8ba-4258-9df5-3009b1478c6f",
+      "name": "Webhook",
+      "webhookId": "GENERATED_ON_IMPORT"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        -160
+      ],
+      "id": "c59623b3-c229-47d1-b77e-5d5061c7d8bc",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "content": "## Vector Store Update\n**- updates the database with new information**",
+        "height": 512,
+        "width": 1536
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        -288
+      ],
+      "id": "72c06bae-7038-4eab-b77e-be4737e92fae",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## RAG-B\n**- receives and answers users' queries**",
+        "height": 512,
+        "width": 1536
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        272
+      ],
+      "id": "9ee7f84e-8d78-4a51-bdf6-bcf19c54b3ae",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "embeddingBatchSize": 1000,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -1024,
+        -160
+      ],
+      "id": "a99a2ad1-bb4f-4b5b-9d30-fc16b58d3ddd",
+      "name": "Supabase Vector Store (Main)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASEAPI_CREDENTIAL_ID",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Call this tool to look up notes on DeFi",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -1104,
+        608
+      ],
+      "id": "717596a1-3a00-4305-b909-2ec01dad49d2",
+      "name": "Supabase Vector Store (Tool)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "YOUR_SUPABASEAPI_CREDENTIAL_ID",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -576,
+        368
+      ],
+      "id": "0bd8d11b-b4d0-40b0-bf93-a6ef262a62d5",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ea8310e9-e97c-408d-92fc-ada4e0a95832",
+              "name": "answer",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -832,
+        368
+      ],
+      "id": "61813edc-2149-445a-a57a-653ae524a746",
+      "name": "Answer"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7e4f7306-6b05-4f95-b500-99d98d32b7f4",
+              "name": "user_id",
+              "value": "={{ $json.body.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c06c1edf-67d8-4c78-8024-3a82c20c6cec",
+              "name": "question",
+              "value": "={{ $json.body.question }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1424,
+        368
+      ],
+      "id": "bbb157b8-2a17-4139-a707-cab8f3b001e9",
+      "name": "Get Question"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=**Vector store successfully updated \u2705**",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -432,
+        -160
+      ],
+      "id": "4d1d8376-3711-4bbf-9c53-11ec3e122b11",
+      "name": "Send Update Confirmation",
+      "webhookId": "GENERATED_ON_IMPORT",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAMAPI_CREDENTIAL_ID",
+          "name": "Telegram Bot API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store (Main)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store (Main)",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Supabase Vector Store (Tool)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Supabase Vector Store (Main)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Send Update Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store (Main)": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store (Tool)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Answer": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Question": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Update Confirmation": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "GENERATED_ON_IMPORT",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "id": "GENERATED_ON_IMPORT",
+  "tags": []
+}
