@@ -690,4 +690,45 @@ Ideas for improvements:
 - Create admin dashboard for monitoring
 - Add multi-modal support (images, audio)
 - Implement federated search across multiple sources
-- Add confidenc
+- Add confidence scores to answers
+- Create automated document summarization
+
+## 📝 License
+
+This workflow is provided as-is for educational and commercial use. Modify as needed.
+
+## 📞 Support
+
+For issues with:
+- **n8n**: [n8n Community Forum](https://community.n8n.io/)
+- **Supabase**: [Supabase Documentation](https://supabase.com/docs)
+- **Discord.py**: [Discord.py Documentation](https://discordpy.readthedocs.io/)
+- **Google Gemini**: [Google AI Documentation](https://ai.google.dev/docs)
+
+## 🎯 Use Cases
+
+### Education
+- Course material Q&A bot
+- Study guide assistant
+- Research paper helper
+
+### Business
+- Internal knowledge base
+- Employee onboarding
+- Policy and procedure lookup
+
+### Development
+- Documentation assistant
+- Code reference bot
+- API documentation helper
+
+### Content Creation
+- Research assistant for writers
+- Fact-checking tool
+- Content ideation support
+
+---
+
+**Built with ❤️ using n8n, LangChain, and AI**
+
+*Last Updated: February 2026*
