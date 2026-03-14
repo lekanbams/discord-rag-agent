@@ -7,12 +7,12 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
 N8N_WEBHOOK_URL = os.getenv('N8N_WEBHOOK_URL')
 
 # Verify we have the required credentials
-if not DISCORD_TOKEN:
-    print("ERROR: DISCORD_TOKEN not found in .env file!")
+if not DISCORD_BOT_TOKEN:
+    print("ERROR: DISCORD_BOT_TOKEN not found in .env file!")
     exit(1)
 if not N8N_WEBHOOK_URL:
     print("ERROR: N8N_WEBHOOK_URL not found in .env file!")
@@ -180,10 +180,10 @@ print("Starting Discord bot...")
 print("Press Ctrl+C to stop\n")
 
 try:
-    client.run(DISCORD_TOKEN)
+    client.run(DISCORD_BOT_TOKEN)
 except discord.LoginFailure:
     print("\n❌ ERROR: Invalid Discord token!")
-    print("Please check your DISCORD_TOKEN in the .env file")
+    print("Please check your DISCORD_BOT_TOKEN in the .env file")
 except KeyboardInterrupt:
     print("\n👋 Bot stopped by user")
 except Exception as e:
