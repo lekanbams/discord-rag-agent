@@ -99,6 +99,7 @@ Respond to Webhook (Send to Discord)
 - pgvector extension enabled in PostgreSQL/Supabase
 - Internet connection for API calls
 - Webhook-capable Discord bot integration
+- Python 3.8+ with packages: `discord.py`, `requests`, `python-dotenv` (see `requirements.txt`)
 
 ## 🚀 Installation
 
@@ -266,44 +267,29 @@ Configure table name: `documents` (in both Supabase nodes)
 5. Test connection
 6. Save
 
-### Step 7: Configure Discord Webhook
+### Step 7: Deploy Discord Bot
 
-You need to integrate with Discord separately since n8n receives webhook requests.
+The repo includes `bot.py`, a full-featured Discord bot that connects to the n8n webhook.
 
-**Create Discord Bot Script** (Python example):
-```python
-import discord
-import requests
+1. **Install dependencies**:
+ ```
+pip install -r requirements.txt
+ ```
+2. Configure environment:
+ ```
+cp .env.example .env
+ ```
+ 
+  Edit .env with your Discord bot token and n8n webhook URL.
 
-WEBHOOK_URL = "https://your-n8n-instance.com/webhook/discord-rag"
-DISCORD_BOT_TOKEN = "your-discord-bot-token"
+3. Run the bot:
+ ```
+python bot.py
+ ```
+ 
+4. Deploy to keep it running 24/7:
 
-client = discord.Client(intents=discord.Intents.default())
-
-@client.event
-async def on_message(message):
-    # Ignore bot's own messages
-    if message.author == client.user:
-        return
-    
-    # Send to n8n webhook
-    response = requests.post(WEBHOOK_URL, json={
-        "question": message.content,
-        "user_id": str(message.author.id),
-        "username": message.author.name,
-        "channel_id": str(message.channel.id)
-    })
-    
-    # Send n8n response back to Discord
-    if response.ok:
-        answer = response.json().get('answer', 'No response')
-        await message.channel.send(answer)
-
-client.run(DISCORD_BOT_TOKEN)
-```
-
-Deploy this script to:
-- Heroku (free tier)
+- Heroku
 - Railway
 - Your own server
 - Replit
@@ -350,10 +336,9 @@ Deploy this script to:
 
 ### Asking Questions in Discord
 
-1. **Question Format**:
-   - Ask naturally: "What is machine learning?"
-   - Be specific: "How do I implement RAG in Python?"
-   - Reference concepts: "Explain the vector embedding from chapter 3"
+1. **Two ways to ask**:
+   - **Mention the bot**: `@RAG-B What is machine learning?`
+   - **Use the command**: `!ask What is machine learning?`
 
 2. **Follow-Up Questions**:
    - Bot remembers context per user
