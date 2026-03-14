@@ -714,6 +714,6 @@ For issues with:
 
 ---
 
-**Built with ❤️ using n8n, LangChain, and AI**
+**Built with ❤️ using n8n, Python, and AI**
 
 *Last Updated: February 2026*
