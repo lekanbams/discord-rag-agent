@@ -1,190 +1,124 @@
-import discord
-import requests
+"""RAG-B v2: Discord support + restricted Telegram document ingestion."""
+import asyncio
+import logging
 import os
-import re
+import time
+from pathlib import Path
+import discord
 from dotenv import load_dotenv
+from ragb.core import Memory, MISSING, split_message
+from ragb.services import Services
 
-# Load environment variables from .env file
 load_dotenv()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+log=logging.getLogger('ragb')
+REQUIRED=['DISCORD_BOT_TOKEN','GOOGLE_GEMINI_API_KEY','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','EMBEDDING_MODEL','CHAT_MODEL','DISCORD_GUILD_ID','ADMIN_CHANNEL_ID','ADMIN_ROLE_ID']
 
-DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-N8N_WEBHOOK_URL = os.getenv('N8N_WEBHOOK_URL')
-
-# Verify we have the required credentials
-if not DISCORD_BOT_TOKEN:
-    print("ERROR: DISCORD_BOT_TOKEN not found in .env file!")
-    exit(1)
-if not N8N_WEBHOOK_URL:
-    print("ERROR: N8N_WEBHOOK_URL not found in .env file!")
-    exit(1)
-
-# Set up Discord client
-intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
-
-@client.event
-async def on_ready():
-    """Called when bot connects to Discord"""
-    print('=' * 50)
-    print(f'✅ Bot is online!')
-    print(f'Bot name: {client.user.name}')
-    print(f'Bot ID: {client.user.id}')
-    print(f'Connected to {len(client.guilds)} server(s)')
-    print('=' * 50)
-    print('Ready to answer questions!')
-    print('Users can ask questions by:')
-    print(f'  - Mentioning the bot: @{client.user.name} your question')
-    print('  - Using command: !ask your question')
-    print('=' * 50)
-
-def clean_markdown_for_discord(text):
-    """Convert incompatible markdown to Discord-compatible format"""
-    text = re.sub(r'####\s+(.+?)(\n|$)', r'**\1**\2', text)
-    text = re.sub(r'###\s+(.+?)(\n|$)', r'**\1**\2', text)
-    text = re.sub(r'##\s+(.+?)(\n|$)', r'**\1**\2', text)
-    text = re.sub(r'#\s+(.+?)(\n|$)', r'**\1**\2', text)
-    return text
-
-def split_message_smart(text, max_length=1900):
-    """Split text at natural boundaries while respecting markdown structure"""
-    if len(text) <= max_length:
-        return [text]
-
-    chunks = []
-    current_chunk = ""
-    paragraphs = text.split('\n\n')
-
-    for paragraph in paragraphs:
-        if len(current_chunk) + len(paragraph) + 2 > max_length:
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-                current_chunk = paragraph + '\n\n'
-            else:
-                sentences = []
-                temp = ""
-                for char in paragraph:
-                    temp += char
-                    if char in '.!?' and len(temp) > 1:
-                        sentences.append(temp)
-                        temp = ""
-                if temp:
-                    sentences.append(temp)
-
-                for sentence in sentences:
-                    if len(current_chunk) + len(sentence) > max_length:
-                        if current_chunk:
-                            chunks.append(current_chunk.strip())
-                        current_chunk = sentence
-                    else:
-                        current_chunk += sentence
-                current_chunk += '\n\n'
-        else:
-            current_chunk += paragraph + '\n\n'
-
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-
-    return chunks
-
-@client.event
-async def on_message(message):
-    """Called when a message is sent in any channel the bot can see"""
-
-    if message.author == client.user:
-        return
-
-    should_respond = (
-        client.user.mentioned_in(message) or
-        message.content.startswith('!ask')
-    )
-
-    if should_respond:
-        question = message.content
-        question = question.replace(f'<@{client.user.id}>', '').strip()
-        question = question.replace('!ask', '').strip()
-
-        if not question:
-            await message.channel.send(
-                "❓ Please ask me a question!\n"
-                f"Examples:\n"
-                f"• `!ask What is machine learning?`\n"
-                f"• `@{client.user.name} Explain neural networks`"
-            )
-            return
-
-        print(f"\n📩 Question from {message.author.name}: {question}")
-
-        async with message.channel.typing():
+class Bot(discord.Client):
+    async def setup_hook(self):
+        self.config_ready=False
+        self.services=Services()
+        Path('data').mkdir(exist_ok=True)
+        self.memory=Memory('data/memory.sqlite')
+        self.locks={}
+        self.cooldowns={}
+        self.slots=asyncio.Semaphore(3)
+        self.telegram_task=asyncio.create_task(self.telegram()) if os.getenv('TELEGRAM_BOT_TOKEN') else None
+    async def close(self):
+        if self.telegram_task:
+            self.telegram_task.cancel()
+            await asyncio.gather(self.telegram_task,return_exceptions=True)
+        await self.services.http.aclose()
+        await super().close()
+    async def on_ready(self):
+        log.info('RAG-B connected as %s',self.user)
+        channel=self.get_channel(int(os.environ['ADMIN_CHANNEL_ID']))
+        guild=self.get_guild(int(os.environ['DISCORD_GUILD_ID']))
+        if not guild or not channel or channel.guild.id != guild.id:
+            log.error('Admin channel/server configuration invalid'); return
+        if channel.permissions_for(guild.default_role).view_channel:
+            log.error('Admin channel must be private to @everyone'); return
+        if not guild.get_role(int(os.environ['ADMIN_ROLE_ID'])):
+            log.error('Admin role not found'); return
+        self.config_ready=True
+    async def on_message(self,message):
+        if message.author.bot or not message.guild or message.guild.id != int(os.environ['DISCORD_GUILD_ID']): return
+        if message.channel.id == int(os.environ['ADMIN_CHANNEL_ID']): return
+        prefix=message.content.startswith('!ask ')
+        mentioned=self.user in message.mentions
+        if not (prefix or mentioned): return
+        if not self.config_ready:
+            await message.reply('RAG-B setup is incomplete. Please contact a moderator.',mention_author=False); return
+        question=message.content[5:] if prefix else message.content
+        for tag in (f'<@{self.user.id}>',f'<@!{self.user.id}>'): question=question.replace(tag,'')
+        question=question.strip()
+        if not question or len(question)>4000:
+            await message.reply('Please ask a question under 4,000 characters.',mention_author=False); return
+        session=f'{message.guild.id}:{message.channel.id}:{message.author.id}'
+        now=time.monotonic()
+        if now-self.cooldowns.get(session,0)<5:
+            await message.reply('Please wait a few seconds before asking again.',mention_author=False); return
+        self.cooldowns[session]=now
+        async with self.locks.setdefault(session,asyncio.Lock()), self.slots, message.channel.typing():
             try:
-                payload = {
-                    'question': question,
-                    'user_id': str(message.author.id),
-                    'username': message.author.name,
-                    'channel_id': str(message.channel.id)
-                }
-
-                print(f"🔄 Sending to n8n...")
-                response = requests.post(
-                    N8N_WEBHOOK_URL,
-                    json=payload,
-                    timeout=30
-                )
-
-                response.raise_for_status()
-
-                try:
-                    response_data = response.json()
-                    if isinstance(response_data, list) and len(response_data) > 0:
-                        answer = response_data[0].get('answer') or response_data[0].get('content', 'Sorry, I could not generate an answer.')
-                    else:
-                        answer = response_data.get('answer') or response_data.get('content', 'Sorry, I could not generate an answer.')
-                except ValueError:
-                    answer = response.text or 'Sorry, I could not generate an answer.'
-
-                answer = clean_markdown_for_discord(answer)
-
-                print(f"✅ Received answer ({len(answer)} characters)")
-
-                if len(answer) > 1900:
-                    chunks = split_message_smart(answer, max_length=1900)
-                    print(f"📝 Splitting into {len(chunks)} parts")
-                    for chunk in chunks:
-                        await message.channel.send(chunk)
-                else:
-                    await message.channel.send(answer)
-
-                print(f"✅ Answer sent successfully\n")
-
-            except requests.exceptions.Timeout:
-                await message.channel.send("⏱️ The request took too long. Please try again.")
-                print(f"❌ Timeout error\n")
-
-            except requests.exceptions.HTTPError as e:
-                await message.channel.send("❌ Sorry, there was an error processing your request.")
-                print(f"❌ HTTP Error: {e}\n")
-
-            except requests.exceptions.RequestException as e:
-                await message.channel.send("❌ Could not connect to the knowledge base.")
-                print(f"❌ Request Error: {e}\n")
-
-            except KeyError as e:
-                await message.channel.send("❌ Received invalid response format from n8n.")
-                print(f"❌ KeyError: {e}\n")
-
+                answer=await self.services.answer(question,self.memory.history(session))
+                if answer is None:
+                    try:
+                        channel=self.get_channel(int(os.environ['ADMIN_CHANNEL_ID']))
+                        role=message.guild.get_role(int(os.environ['ADMIN_ROLE_ID']))
+                        if not channel or channel.permissions_for(message.guild.default_role).view_channel or not role: raise RuntimeError('Invalid private admin destination')
+                        # Only the configured admin role may ping. User/question mentions cannot ping.
+                        alert=f'{role.mention} Unanswered question from {message.author.mention}\nQuestion: {question}\nOriginal message: {message.jump_url}'
+                        await channel.send(alert,allowed_mentions=discord.AllowedMentions(roles=[role],users=False,everyone=False))
+                        answer=MISSING+' I\'ve notified an admin to help.'
+                    except Exception:
+                        log.warning('Admin routing failed')
+                        answer=MISSING+' I couldn\'t notify an admin. Please contact a moderator directly.'
+                for chunk in split_message(answer):
+                    await message.reply(chunk,mention_author=False,allowed_mentions=discord.AllowedMentions.none())
+                self.memory.add(session,question,answer)
+            except Exception as error:
+                log.warning('Question failed: %s',type(error).__name__)
+                await message.reply('I couldn\'t check the knowledge base right now. Please try again shortly.',mention_author=False)
+    async def telegram(self):
+        token=os.environ['TELEGRAM_BOT_TOKEN']
+        base=f'https://api.telegram.org/bot{token}'
+        admins={int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS','').split(',') if x.strip()}
+        if not admins: log.warning('Telegram uploads disabled: no admin IDs'); return
+        offset=0
+        while True:
+            try:
+                r=await self.services.http.get(base+'/getUpdates',params={'offset':offset,'timeout':25},timeout=35)
+                r.raise_for_status()
+                data=r.json()
+                if not data.get('ok'): raise RuntimeError('Telegram polling failed')
+                for update in data['result']:
+                    offset=update['update_id']+1
+                    msg=update.get('message',{})
+                    if msg.get('from',{}).get('id') not in admins or msg.get('chat',{}).get('type')!='private': continue
+                    doc=msg.get('document')
+                    if not doc: continue
+                    try:
+                        if doc.get('file_size',0)>5*1024*1024: raise ValueError('Upload limit is 5 MB')
+                        f=await self.services.http.get(base+'/getFile',params={'file_id':doc['file_id']})
+                        f.raise_for_status()
+                        file_path=f.json()['result']['file_path']
+                        payload=await self.services.http.get(f'https://api.telegram.org/file/bot{token}/{file_path}')
+                        payload.raise_for_status()
+                        if len(payload.content)>5*1024*1024: raise ValueError('Upload limit is 5 MB')
+                        count=await self.services.ingest(doc['file_name'],payload.content)
+                        reply=f'Knowledge base updated: {count} chunks indexed.'
+                    except ValueError as e: reply=str(e)
+                    except Exception: reply='Upload failed. Please try again. No success is confirmed.'
+                    await self.services.http.post(base+'/sendMessage',json={'chat_id':msg['chat']['id'],'text':reply})
             except Exception as e:
-                await message.channel.send("❌ An unexpected error occurred.")
-                print(f"❌ Unexpected error: {e}\n")
+                log.warning('Telegram operation failed: %s',type(e).__name__)
+                await asyncio.sleep(5)
 
-print("Starting Discord bot...")
-print("Press Ctrl+C to stop\n")
-
-try:
-    client.run(DISCORD_BOT_TOKEN)
-except discord.LoginFailure:
-    print("\n❌ ERROR: Invalid Discord token!")
-    print("Please check your DISCORD_BOT_TOKEN in the .env file")
-except KeyboardInterrupt:
-    print("\n👋 Bot stopped by user")
-except Exception as e:
-    print(f"\n❌ Error starting bot: {e}")
+if __name__=='__main__':
+    missing=[key for key in REQUIRED if not os.getenv(key)]
+    if missing: raise SystemExit('Missing configuration: '+', '.join(missing))
+    # Avoid httpx INFO request logs, which would expose Telegram tokens in URLs.
+    logging.getLogger('httpx').setLevel(logging.WARNING)
+    intents=discord.Intents.default(); intents.message_content=True
+    Bot(intents=intents).run(os.environ['DISCORD_BOT_TOKEN'])

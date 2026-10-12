@@ -1,0 +1,19 @@
+services:
+  ragb:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ragb-data:/app/data
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  ragb-data:
