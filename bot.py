@@ -25,11 +25,16 @@ class Bot(discord.Client):
         self.slots=asyncio.Semaphore(3)
         self.telegram_task=asyncio.create_task(self.telegram()) if os.getenv('TELEGRAM_BOT_TOKEN') else None
     async def close(self):
-        if self.telegram_task:
-            self.telegram_task.cancel()
-            await asyncio.gather(self.telegram_task,return_exceptions=True)
-        await self.services.http.aclose()
-        await super().close()
+        task = getattr(self, 'telegram_task', None)
+        try:
+            if task:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+            services = getattr(self, 'services', None)
+            if services:
+                await services.http.aclose()
+        finally:
+            await super().close()
     async def on_ready(self):
         log.info('RAG-B connected as %s',self.user)
         channel=self.get_channel(int(os.environ['ADMIN_CHANNEL_ID']))

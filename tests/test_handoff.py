@@ -40,3 +40,8 @@ class HandoffTests(unittest.IsolatedAsyncioTestCase):
         reply,send=await self.run_case(service_fails=True)
         self.assertIn("couldn't check",reply)
         send.assert_not_called()
+
+    async def test_close_before_setup(self):
+        bot=Bot(intents=discord.Intents.default())
+        await bot.close()
+        self.assertTrue(bot.is_closed())
