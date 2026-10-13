@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 import discord
 from bot import Bot
+from ragb.core import MISSING
 
 class HandoffTests(unittest.IsolatedAsyncioTestCase):
     async def run_case(self, alert_fails=False, service_fails=False):
@@ -28,13 +29,13 @@ class HandoffTests(unittest.IsolatedAsyncioTestCase):
             return message.reply.call_args.args[0], channel.send
     async def test_missing_answer_routes(self):
         reply,send=await self.run_case()
-        self.assertIn("I've notified an admin",reply)
+        self.assertEqual(reply,MISSING)
         self.assertIn('Unknown question',send.call_args.args[0])
         self.assertIn('<@5>',send.call_args.args[0])
         self.assertFalse(send.call_args.kwargs['allowed_mentions'].everyone)
     async def test_failed_alert_is_not_confirmed(self):
         reply,_=await self.run_case(alert_fails=True)
-        self.assertIn("couldn't notify",reply)
+        self.assertEqual(reply,MISSING)
         self.assertNotIn("I've notified",reply)
     async def test_database_error_not_missing_context(self):
         reply,send=await self.run_case(service_fails=True)

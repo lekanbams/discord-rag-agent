@@ -92,10 +92,10 @@ class Bot(discord.Client):
                         # Only the configured admin role may ping. User/question mentions cannot ping.
                         alert=f'{role.mention} Unanswered question from {message.author.mention}\nQuestion: {question}\nOriginal message: {message.jump_url}'
                         await channel.send(alert,allowed_mentions=discord.AllowedMentions(roles=[role],users=False,everyone=False))
-                        answer=MISSING+' I\'ve notified an admin to help.'
+                        answer=MISSING
                     except Exception:
                         log.warning('Admin routing failed')
-                        answer=MISSING+' I couldn\'t notify an admin. Please contact a moderator directly.'
+                        answer=MISSING
                 for chunk in split_message(answer):
                     await message.reply(chunk,mention_author=False,allowed_mentions=discord.AllowedMentions.none())
                 self.memory.add(session,question,answer)
