@@ -11,11 +11,7 @@ def supported_answer(raw, documents):
         return None
     if not refs or any(type(i) is not int or i < 1 or i > len(documents) for i in refs):
         return None
-    sources = []
-    for i in dict.fromkeys(refs):
-        meta = documents[i-1].get('metadata') or {}
-        sources.append(str(meta.get('filename', 'Knowledge base document')).replace('@', '＠'))
-    return data['answer'].strip() + '\n\nSources: ' + ', '.join(dict.fromkeys(sources))
+    return data['answer'].strip()
 
 def split_message(text, limit=1900):
     return [text[i:i+limit] for i in range(0, len(text), limit)] or ['']
