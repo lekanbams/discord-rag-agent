@@ -95,7 +95,7 @@ class Bot(discord.Client):
                         answer=MISSING
                     except Exception:
                         log.warning('Admin routing failed')
-                        answer=MISSING
+                        answer="I couldn’t find enough information in the project’s documentation to answer that accurately. I couldn’t notify an admin, so please reach out to a moderator directly. 🤝"
                 for chunk in split_message(answer):
                     await message.reply(chunk,mention_author=False,allowed_mentions=discord.AllowedMentions.none())
                 self.memory.add(session,question,answer)

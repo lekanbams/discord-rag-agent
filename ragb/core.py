@@ -2,7 +2,7 @@
 import json
 import sqlite3
 
-MISSING = "I couldn’t find enough information in the project’s documentation to answer that confidently. I don’t want to give you inaccurate information, so please reach out to a moderator for clarification. They’ll be happy to help! 🤝"
+MISSING = "I couldn’t find enough information in the project’s documentation to answer that accurately, so I’ve notified an admin. Someone from the team will get back to you shortly. 🤝"
 
 def supported_answer(raw, documents):
     data = json.loads(raw)
