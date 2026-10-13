@@ -108,8 +108,16 @@ class Bot(discord.Client):
         admins={int(x) for x in os.getenv('TELEGRAM_ADMIN_IDS','').split(',') if x.strip()}
         if not admins: log.warning('Telegram uploads disabled: no admin IDs'); return
         offset=0
+        webhook_removed=False
         while True:
             try:
+                if not webhook_removed:
+                    removed = await self.services.http.post(base+'/deleteWebhook', json={'drop_pending_updates':False})
+                    removed.raise_for_status()
+                    if removed.json().get('ok') is not True:
+                        raise RuntimeError('Telegram webhook removal failed')
+                    webhook_removed=True
+                    log.info('Telegram webhook removed; queued updates retained; polling started')
                 r=await self.services.http.get(base+'/getUpdates',params={'offset':offset,'timeout':25},timeout=35)
                 r.raise_for_status()
                 data=r.json()
