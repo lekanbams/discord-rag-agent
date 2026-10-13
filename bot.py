@@ -2,6 +2,8 @@
 import asyncio
 import logging
 import os
+import re
+import httpx
 import time
 from pathlib import Path
 import discord
@@ -13,6 +15,21 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 log=logging.getLogger('ragb')
 REQUIRED=['DISCORD_BOT_TOKEN','OPENAI_API_KEY','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','EMBEDDING_MODEL','CHAT_MODEL','DISCORD_GUILD_ID','ADMIN_CHANNEL_ID','ADMIN_ROLE_ID']
+
+def safe_http_error(error):
+    # Never log request URLs, headers, full bodies or exception strings.
+    status = error.response.status_code
+    detail = ''
+    if error.request.url.host == 'api.telegram.org':
+        try:
+            detail = str(error.response.json().get('description', ''))
+        except (ValueError, AttributeError):
+            pass
+        for key in ('TELEGRAM_BOT_TOKEN', 'DISCORD_BOT_TOKEN', 'OPENAI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY'):
+            value = os.getenv(key)
+            if value: detail = detail.replace(value, '[REDACTED]')
+        detail = re.sub(r'https?://\S+', '[URL]', detail).replace('\n', ' ')[:250]
+    return f'HTTP {status}' + (f': {detail}' if detail else '')
 
 class Bot(discord.Client):
     async def setup_hook(self):
@@ -114,8 +131,17 @@ class Bot(discord.Client):
                         count=await self.services.ingest(doc['file_name'],payload.content)
                         reply=f'Knowledge base updated: {count} chunks indexed.'
                     except ValueError as e: reply=str(e)
-                    except Exception: reply='Upload failed. Please try again. No success is confirmed.'
-                    await self.services.http.post(base+'/sendMessage',json={'chat_id':msg['chat']['id'],'text':reply})
+                    except httpx.HTTPStatusError as e:
+                        log.warning('Upload HTTP failure: %s', safe_http_error(e))
+                        reply='Upload failed. Please try again. No success is confirmed.'
+                    except Exception as e:
+                        log.warning('Upload failed: %s', type(e).__name__)
+                        reply='Upload failed. Please try again. No success is confirmed.'
+                    sent = await self.services.http.post(base+'/sendMessage',json={'chat_id':msg['chat']['id'],'text':reply})
+                    sent.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                log.warning('Telegram operation failed: %s', safe_http_error(e))
+                await asyncio.sleep(15)
             except Exception as e:
                 log.warning('Telegram operation failed: %s',type(e).__name__)
                 await asyncio.sleep(5)
