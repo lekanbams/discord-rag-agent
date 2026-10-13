@@ -12,7 +12,7 @@ from ragb.services import Services
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 log=logging.getLogger('ragb')
-REQUIRED=['DISCORD_BOT_TOKEN','GOOGLE_GEMINI_API_KEY','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','EMBEDDING_MODEL','CHAT_MODEL','DISCORD_GUILD_ID','ADMIN_CHANNEL_ID','ADMIN_ROLE_ID']
+REQUIRED=['DISCORD_BOT_TOKEN','OPENAI_API_KEY','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','EMBEDDING_MODEL','CHAT_MODEL','DISCORD_GUILD_ID','ADMIN_CHANNEL_ID','ADMIN_ROLE_ID']
 
 class Bot(discord.Client):
     async def setup_hook(self):

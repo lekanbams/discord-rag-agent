@@ -1,12 +1,12 @@
 # RAG-B v2 setup
 
-This branch replaces n8n with a Python service. Discord and optional Telegram use outbound connections, so no public HTTP port or domain is needed. Supabase and Gemini remain external services. No credentials are included.
+This branch replaces n8n with a Python service. Discord and optional Telegram use outbound connections, so no public HTTP port or domain is needed. Supabase and OpenAI remain external services. No credentials are included.
 
 ## Before starting
 
 1. Provide VPS OS/RAM/CPU details. Install Docker Engine and Compose using the official instructions for that OS.
 2. Run `sql/v2.sql` in Supabase SQL Editor after reviewing it. This creates a separate v2 table and restricted retrieval function. It does not migrate or alter v1 documents. Re-upload demo documents unless the previous embedding model is verified compatible.
-3. Copy `env.example` to `.env`, fill values locally and run `chmod 600 .env`. Never commit this file. Verify Gemini model access. The chosen embedding model must support 768 dimensions and retrieval task types.
+3. Copy `env.example` to `.env`, fill values locally and run `chmod 600 .env`. Never commit this file. Verify OpenAI model access. The chosen embedding model must support 768 dimensions and the dimensions parameter.
 4. Enable Discord Message Content Intent. Invite the bot with View Channels, Send Messages and Read Message History permissions. Give it access to the admin-only channel and permission to mention the chosen admin role. Keep the admin role mentionable or grant the bot the appropriate mention permission. Review channel overrides for all member roles, not only @everyone.
 5. Optional Telegram: set bot token and comma-separated admin user IDs. Remove any old Telegram webhook before using long polling. Only approved admins in private chats can upload. Accepted formats: PDF, DOCX, TXT, MD and CSV, maximum 5 MB. Scanned PDFs need OCR elsewhere.
 

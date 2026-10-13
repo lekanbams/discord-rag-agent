@@ -9,25 +9,34 @@ from .core import supported_answer
 class Services:
     def __init__(self):
         self.http = httpx.AsyncClient(timeout=60)
-        self.key = os.environ['GOOGLE_GEMINI_API_KEY']
+        self.key = os.environ['OPENAI_API_KEY']
         self.base = os.environ['SUPABASE_URL'].rstrip('/') + '/rest/v1'
         self.headers = {'apikey': os.environ['SUPABASE_SERVICE_ROLE_KEY'], 'Authorization': 'Bearer ' + os.environ['SUPABASE_SERVICE_ROLE_KEY']}
         self.embedding_model = os.environ['EMBEDDING_MODEL']
         self.chat_model = os.environ['CHAT_MODEL']
-    async def gemini(self, model, action, body):
-        r = await self.http.post(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:{action}', headers={'x-goog-api-key':self.key}, json=body)
+    async def openai(self, endpoint, body):
+        r = await self.http.post('https://api.openai.com/v1/' + endpoint,
+                                 headers={'Authorization': 'Bearer ' + self.key}, json=body)
         r.raise_for_status()
         return r.json()
     async def embed(self, text, task):
-        data = await self.gemini(self.embedding_model, 'embedContent', {'model':'models/'+self.embedding_model,'content':{'parts':[{'text':text}]},'taskType':task,'outputDimensionality':768})
-        v = data['embedding']['values']
+        data = await self.openai('embeddings', {'model':self.embedding_model,
+                                  'input':text,'dimensions':768,'encoding_format':'float'})
+        v = data['data'][0]['embedding']
         if len(v) != 768: raise ValueError('Embedding dimension mismatch')
         norm = math.sqrt(sum(x*x for x in v))
         if not norm: raise ValueError('Empty embedding')
         return [x/norm for x in v]
     async def generate(self, prompt):
-        data = await self.gemini(self.chat_model,'generateContent',{'contents':[{'parts':[{'text':prompt}]}],'generationConfig':{'responseMimeType':'application/json','temperature':0}})
-        return ''.join(p.get('text','') for p in data['candidates'][0]['content']['parts'])
+        data = await self.openai('chat/completions', {'model':self.chat_model,
+            'messages':[{'role':'system','content':'Return valid JSON only. Follow the evidence rules in the task.'},
+                        {'role':'user','content':prompt}],
+            'response_format':{'type':'json_object'},'temperature':0,'max_completion_tokens':1200})
+        choice = data['choices'][0]
+        if choice.get('finish_reason') != 'stop': raise ValueError('Incomplete model response')
+        content = choice['message'].get('content')
+        if not content: raise ValueError('Empty model response')
+        return content
     async def answer(self, question, history):
         # Rewrite follow-ups for retrieval only. History is never evidence.
         search = question

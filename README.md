@@ -1,6 +1,6 @@
 # RAG-B v2
 
-A VPS-ready Discord knowledge-base bot with Gemini, Supabase and optional admin-only Telegram document uploads. This branch replaces the n8n runtime. The `main` branch preserves v1.
+A VPS-ready Discord knowledge-base bot with OpenAI, Supabase and optional admin-only Telegram document uploads. This branch replaces the n8n runtime. The `main` branch preserves v1.
 
 When documents do not support an answer, RAG-B alerts a configured private admin channel with the question, user and original message link. It confirms notification only after the alert succeeds. Admins handle tickets manually.
 
