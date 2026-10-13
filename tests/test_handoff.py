@@ -35,7 +35,7 @@ class HandoffTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(send.call_args.kwargs['allowed_mentions'].everyone)
     async def test_failed_alert_is_not_confirmed(self):
         reply,_=await self.run_case(alert_fails=True)
-        self.assertEqual(reply,MISSING)
+        self.assertIn("couldn’t notify an admin",reply)
         self.assertNotIn("I've notified",reply)
     async def test_database_error_not_missing_context(self):
         reply,send=await self.run_case(service_fails=True)
