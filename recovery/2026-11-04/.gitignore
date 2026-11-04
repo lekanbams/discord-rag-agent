@@ -1,0 +1,5 @@
+.env
+*.private.json
+*.sqlite
+*.sqlite-*
+supabase-documents*.json

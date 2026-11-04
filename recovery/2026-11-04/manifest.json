@@ -1,0 +1,20 @@
+{
+  "prepared_date": "2026-11-04",
+  "repository": "lekanbams/discord-rag-agent",
+  "source_branch": "v2",
+  "source_commit": "485177996d6ab835a85694383c55840bcc83a75b",
+  "live_deployed_commit_verified": false,
+  "contains_live_database_dump": false,
+  "contains_secrets": false,
+  "source_sha256": {
+    "bot.py": "55d0ad97c1b5b9529f8bd928e355ff319b1f99a65f1a661eefb000ae9df6d2fd",
+    "ragb/core.py": "26be7b67f83edba55806753066301a7f3a892c13c06f61b7d96cc2be4493461c",
+    "ragb/services.py": "2d898d24c102bc4682d23e01e4ae8e1e6f983e4588f14d34c420dfdfe5ab6711",
+    "ragb/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sql/v2.sql": "2aa8990c93f31bf17dda1f9f518b2eacad05ee5318b3f29a41e793e5b58a0a17",
+    "env.example": "3268dbfd410989a5f0129f7a4882eebbe94a066b7565006abd7cd84b434c29ce",
+    "Dockerfile": "34dc8547ec76f7d323e31347de46e08f4809e5af1f728a2686d02e4bde4b525b",
+    "compose.yaml": "e88012f4adddc377c33145043a992d7b1cf4d623c68be838ee127a2914c23d42",
+    "requirements.txt": "fdd04621f1bf688b893f812ff22191f97b7f13d79e0ea40895f8138fc65177e8"
+  }
+}
